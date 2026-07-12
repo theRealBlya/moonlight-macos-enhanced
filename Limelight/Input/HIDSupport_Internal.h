@@ -140,6 +140,7 @@
 - (BOOL)usesKeyboardCommandToControlCompatibility;
 - (BOOL)usesKeyboardLeftControlWinSwapCompatibility;
 - (BOOL)usesKeyboardShortcutTranslationCompatibility;
+- (NSEventModifierFlags)normalizedModifierFlagsForEvent:(NSEvent *)event;
 - (void)updateKeyboardPhysicalModifierStateFromEvent:(NSEvent *)event;
 - (BOOL)shouldApplyKeyboardShortcutTranslationForEvent:(NSEvent *)event;
 - (NSUInteger)desiredRemoteKeyboardModifierMaskForEvent:(NSEvent *)event;
@@ -147,6 +148,7 @@
 - (char)translatedModifierFlagsForEvent:(NSEvent *)event;
 - (short)translateKeyCodeWithEvent:(NSEvent *)event;
 - (char)translateKeyModifierWithEvent:(NSEvent *)event;
+- (void)sendKeyboardEvent:(NSEvent *)event action:(char)action source:(const char *)source;
 - (void)handleDpad:(NSInteger)intValue;
 - (void)updateButtonFlags:(int)flag state:(BOOL)set;
 - (void)setupHidManager;

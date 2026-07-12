@@ -2237,7 +2237,7 @@ static inline NSPoint MLClampFreeMousePointToExitEdge(NSPoint point,
 }
 
 - (void)flagsChanged:(NSEvent *)event {
-    NSEventModifierFlags relevantModifiers = MLRelevantShortcutModifiers(event.modifierFlags);
+    NSEventModifierFlags relevantModifiers = MLNormalizedShortcutModifiersForEvent(event);
     if ([self shouldDeferCommandModifierForShortcutHandlingWithEvent:event]) {
         self.deferredCommandModifierPendingForShortcutTranslation = YES;
         self.deferredCommandModifierForwardedAsHeld = NO;
@@ -2568,7 +2568,7 @@ static inline NSPoint MLClampFreeMousePointToExitEdge(NSPoint point,
         return nil;
     }
 
-    NSEventModifierFlags relevantModifiers = MLRelevantShortcutModifiers(event.modifierFlags);
+    NSEventModifierFlags relevantModifiers = MLNormalizedShortcutModifiersForEvent(event);
     NSArray<KeyboardTranslationRule *> *rules = [SettingsClass keyboardTranslationRulesFor:self.app.host.uuid];
     for (KeyboardTranslationRule *rule in rules) {
         StreamShortcut *trigger = rule.trigger;
@@ -2576,7 +2576,8 @@ static inline NSPoint MLClampFreeMousePointToExitEdge(NSPoint point,
             continue;
         }
 
-        if (event.keyCode == trigger.keyCode && relevantModifiers == trigger.modifierFlags) {
+        if (event.keyCode == trigger.keyCode &&
+            relevantModifiers == MLNormalizedShortcutModifiersForShortcut(trigger)) {
             Log(LOG_I, @"[diag] keyboard translation trigger matched: event=%@ outputKind=%ld",
                 MLDisconnectEventSummary(event),
                 (long)rule.outputKind);
@@ -2599,7 +2600,7 @@ static inline NSPoint MLClampFreeMousePointToExitEdge(NSPoint point,
     }
 
     BOOL isCommandKeyEvent = (event.keyCode == kVK_Command || event.keyCode == kVK_RightCommand);
-    NSEventModifierFlags relevantModifiers = MLRelevantShortcutModifiers(event.modifierFlags);
+    NSEventModifierFlags relevantModifiers = MLNormalizedShortcutModifiersForEvent(event);
     if (!isCommandKeyEvent || relevantModifiers != NSEventModifierFlagCommand) {
         return NO;
     }
@@ -2776,7 +2777,11 @@ static inline NSPoint MLClampFreeMousePointToExitEdge(NSPoint point,
 
 - (BOOL)onKeyboardEquivalent:(NSEvent *)event {
     StreamShortcut *disconnectOptionsShortcut = [self streamShortcutForAction:MLShortcutActionShowDisconnectOptions];
-    const NSEventModifierFlags eventModifierFlags = MLRelevantShortcutModifiers(event.modifierFlags);
+    const NSEventModifierFlags rawShortcutModifierFlags = MLRelevantShortcutModifiers(event.modifierFlags);
+    const NSEventModifierFlags eventModifierFlags = MLNormalizedShortcutModifiersForEvent(event);
+    const BOOL normalizedSyntheticArrowFunction =
+        (rawShortcutModifierFlags & NSEventModifierFlagFunction) != 0 &&
+        (eventModifierFlags & NSEventModifierFlagFunction) == 0;
     StreamShortcut *disconnectShortcut = [self streamShortcutForAction:MLShortcutActionDisconnectStream];
     StreamShortcut *quitShortcut = [self streamShortcutForAction:MLShortcutActionCloseAndQuitApp];
     StreamShortcut *reconnectShortcut = [self streamShortcutForAction:MLShortcutActionReconnectStream];
@@ -2869,6 +2874,24 @@ static inline NSPoint MLClampFreeMousePointToExitEdge(NSPoint point,
     }
     
     [self resolveDeferredCommandModifierWithoutRemoteTapWithReason:@"keyboard-equivalent-pass-through" event:event];
+
+    // AppKit marks ordinary arrow events with .function and routes them through
+    // performKeyEquivalent:. Sending down+up here creates a pulse that desktop
+    // apps can observe but games polling key state can miss. Preserve the real
+    // event lifetime: send down now and let the matching keyUp: release it.
+    if (normalizedSyntheticArrowFunction) {
+        BOOL isKeyUp = event.type == NSEventTypeKeyUp;
+        Log(LOG_D, @"[inputdiag] keyboard normalized synthetic Fn arrow key-equivalent to held %@: %@",
+            isKeyUp ? @"keyUp" : @"keyDown",
+            MLDisconnectEventSummary(event));
+        if (isKeyUp) {
+            [self.hidSupport keyUp:event];
+        } else {
+            [self.hidSupport keyDown:event];
+        }
+        return YES;
+    }
+
     [self.hidSupport keyDown:event];
     [self.hidSupport keyUp:event];
     

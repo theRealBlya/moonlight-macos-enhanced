@@ -453,9 +453,11 @@
 					MetalFX,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = std.skyhua.MoonlightMac;
-				PRODUCT_NAME = Moonlight;
+				PRODUCT_MODULE_NAME = Moonlight;
+				PRODUCT_NAME = "moonlight-mac-v2";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Limelight/Moonlight-Bridging-Header.h";
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = "Moonlight-Swift.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;

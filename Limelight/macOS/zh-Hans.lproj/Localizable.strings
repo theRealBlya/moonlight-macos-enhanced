@@ -728,6 +728,8 @@
 "Welcome AWDL detail" = "可选。它会在串流期间管理 AWDL 接口，帮助 Wi‑Fi 串流更稳定。";
 "Keyboard Compatibility" = "快捷键翻译";
 "Keyboard Compatibility detail" = "上面控制全局翻译方式；下面的自定义规则始终生效。";
+"Ignore macOS Fn flag on arrow keys" = "方向键忽略 macOS Fn 标志";
+"Ignore macOS Fn flag on arrow keys detail" = "推荐开启。移除 macOS 为普通方向键事件附加的合成 Fn 标志；如需录制或使用 Fn+方向键映射 Home、End、Page Up 或 Page Down，请关闭。";
 "Shortcut Translation Rules" = "快捷键翻译规则";
 "Shortcut Translation Rules note" = "这里的规则始终生效。只有当你想把某个 Mac 快捷键改成主机快捷键，或直接改成 Moonlight 动作时，才需要添加。";
 "No Shortcut Translation Rules" = "还没有翻译规则";

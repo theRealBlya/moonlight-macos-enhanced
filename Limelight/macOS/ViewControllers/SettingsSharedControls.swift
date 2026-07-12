@@ -619,7 +619,9 @@ private struct ShortcutCaptureSheet: View {
 
     let shortcut = StreamShortcut(
       keyCode: Int(event.keyCode),
-      modifierFlags: StreamShortcutProfile.relevantModifierFlags(event.modifierFlags))
+      modifierFlags: StreamShortcutProfile.normalizedModifierFlagsForCurrentSettings(
+        event.modifierFlags,
+        forKeyCode: Int(event.keyCode)))
     return capture(shortcut)
   }
 
@@ -972,7 +974,9 @@ private struct KeyboardTranslationRuleEditorSheet: View {
 
     let shortcut = StreamShortcut(
       keyCode: Int(event.keyCode),
-      modifierFlags: StreamShortcutProfile.relevantModifierFlags(event.modifierFlags))
+      modifierFlags: StreamShortcutProfile.normalizedModifierFlagsForCurrentSettings(
+        event.modifierFlags,
+        forKeyCode: Int(event.keyCode)))
 
     switch captureTarget {
     case .trigger:

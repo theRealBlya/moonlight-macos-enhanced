@@ -52,6 +52,10 @@ final class StreamShortcut: NSObject, Codable {
 
 @objcMembers
 final class StreamShortcutProfile: NSObject {
+  static let ignoreMacOSFunctionModifierForArrowKeysDefaultsKey =
+    "keyboard.ignoreMacOSFunctionModifierForArrowKeys"
+  static let defaultIgnoreMacOSFunctionModifierForArrowKeys = true
+
   static let releaseMouseCaptureAction = "releaseMouseCapture"
   static let togglePerformanceOverlayAction = "togglePerformanceOverlay"
   static let toggleMouseModeAction = "toggleMouseMode"
@@ -172,6 +176,42 @@ final class StreamShortcutProfile: NSObject {
     flags.intersection([.control, .option, .shift, .command, .function])
   }
 
+  @objc static func ignoresMacOSFunctionModifierForArrowKeys() -> Bool {
+    let defaults = UserDefaults.standard
+    if defaults.object(forKey: ignoreMacOSFunctionModifierForArrowKeysDefaultsKey) == nil {
+      return defaultIgnoreMacOSFunctionModifierForArrowKeys
+    }
+    return defaults.bool(forKey: ignoreMacOSFunctionModifierForArrowKeysDefaultsKey)
+  }
+
+  @objc(normalizedModifierFlags:forKeyCode:ignoreArrowFunction:)
+  static func normalizedModifierFlags(
+    _ flags: NSEvent.ModifierFlags,
+    forKeyCode keyCode: Int,
+    ignoreArrowFunction: Bool
+  ) -> NSEvent.ModifierFlags {
+    var normalized = relevantModifierFlags(flags)
+    if ignoreArrowFunction && isArrowKeyCode(keyCode) {
+      normalized.remove(.function)
+    }
+    return normalized
+  }
+
+  static func normalizedModifierFlagsForCurrentSettings(
+    _ flags: NSEvent.ModifierFlags,
+    forKeyCode keyCode: Int
+  ) -> NSEvent.ModifierFlags {
+    normalizedModifierFlags(
+      flags,
+      forKeyCode: keyCode,
+      ignoreArrowFunction: ignoresMacOSFunctionModifierForArrowKeys())
+  }
+
+  private static func isArrowKeyCode(_ keyCode: Int) -> Bool {
+    keyCode == kVK_LeftArrow || keyCode == kVK_RightArrow
+      || keyCode == kVK_DownArrow || keyCode == kVK_UpArrow
+  }
+
   @objc static func actionOrder() -> [String] {
     orderedActions
   }
@@ -243,7 +283,12 @@ final class StreamShortcutProfile: NSObject {
   }
 
   @objc static func displayTokens(for shortcut: StreamShortcut) -> [String] {
-    var tokens = modifierDisplayOrder.compactMap { shortcut.modifierFlags.contains($0.0) ? $0.1 : nil }
+    let modifiers = shortcut.hasKeyCode
+      ? normalizedModifierFlagsForCurrentSettings(
+        shortcut.modifierFlags,
+        forKeyCode: shortcut.keyCode)
+      : relevantModifierFlags(shortcut.modifierFlags)
+    var tokens = modifierDisplayOrder.compactMap { modifiers.contains($0.0) ? $0.1 : nil }
 
     if !shortcut.modifierOnly, let key = keySymbol(for: shortcut.keyCode) {
       tokens.append(key)

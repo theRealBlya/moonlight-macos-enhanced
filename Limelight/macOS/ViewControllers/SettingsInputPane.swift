@@ -20,6 +20,9 @@ struct InputView: View {
   @AppStorage("settings.input.mouseTuningExpanded") private var mouseTuningExpanded = false
   @AppStorage("settings.input.controllerAdvancedExpanded") private var controllerAdvancedExpanded =
     false
+  @AppStorage(StreamShortcutProfile.ignoreMacOSFunctionModifierForArrowKeysDefaultsKey)
+  private var ignoreMacOSFunctionModifierForArrowKeys =
+    StreamShortcutProfile.defaultIgnoreMacOSFunctionModifierForArrowKeys
 
   private var selectedMouseStrategy: MouseInputDriverStrategy {
     MouseInputDriverStrategy(selection: settingsModel.selectedMouseDriver)
@@ -347,6 +350,14 @@ struct InputView: View {
       ToggleCell(
         title: "Capture system keyboard shortcuts",
         boolBinding: $settingsModel.captureSystemShortcuts
+      )
+
+      Divider()
+
+      ToggleCell(
+        title: "Ignore macOS Fn flag on arrow keys",
+        hintKey: "Ignore macOS Fn flag on arrow keys detail",
+        boolBinding: $ignoreMacOSFunctionModifierForArrowKeys
       )
 
       Divider()

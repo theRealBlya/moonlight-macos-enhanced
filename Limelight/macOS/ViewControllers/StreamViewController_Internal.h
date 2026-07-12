@@ -75,6 +75,24 @@ static inline NSEventModifierFlags MLRelevantShortcutModifiers(NSEventModifierFl
     return flags & (NSEventModifierFlagShift | NSEventModifierFlagControl | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagFunction);
 }
 
+static inline NSEventModifierFlags MLNormalizedShortcutModifiersForEvent(NSEvent *event) {
+    if (event == nil) {
+        return 0;
+    }
+    return [StreamShortcutProfile normalizedModifierFlags:event.modifierFlags
+                                                forKeyCode:event.keyCode
+                                       ignoreArrowFunction:[StreamShortcutProfile ignoresMacOSFunctionModifierForArrowKeys]];
+}
+
+static inline NSEventModifierFlags MLNormalizedShortcutModifiersForShortcut(StreamShortcut *shortcut) {
+    if (shortcut == nil) {
+        return 0;
+    }
+    return [StreamShortcutProfile normalizedModifierFlags:shortcut.modifierFlags
+                                                forKeyCode:shortcut.keyCode
+                                       ignoreArrowFunction:[StreamShortcutProfile ignoresMacOSFunctionModifierForArrowKeys]];
+}
+
 static inline BOOL MLIsPrivateOrLocalIPv4String(NSString *ip) {
     struct in_addr addr;
     if (inet_pton(AF_INET, ip.UTF8String, &addr) != 1) {

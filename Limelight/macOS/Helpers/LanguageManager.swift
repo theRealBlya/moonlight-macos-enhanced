@@ -227,6 +227,9 @@ public class LanguageManager: NSObject, ObservableObject {
     "HID": "HID",
     "MFi": "MFi",
     "Keyboard": "Keyboard",
+    "Ignore macOS Fn flag on arrow keys": "Ignore macOS Fn flag on arrow keys",
+    "Ignore macOS Fn flag on arrow keys detail":
+      "Recommended. Removes the synthetic Fn flag that macOS attaches to ordinary arrow-key events. Turn this off to record or use Fn+Arrow mappings for Home, End, Page Up, or Page Down.",
     "Capture system keyboard shortcuts": "Capture system keyboard shortcuts",
     "Shortcut Reference": "Stream Shortcuts",
     "Stream Shortcuts": "Stream Shortcuts",
@@ -515,6 +518,9 @@ public class LanguageManager: NSObject, ObservableObject {
     "HID": "HID",
     "MFi": "MFi",
     "Keyboard": "键盘",
+    "Ignore macOS Fn flag on arrow keys": "方向键忽略 macOS Fn 标志",
+    "Ignore macOS Fn flag on arrow keys detail":
+      "推荐开启。移除 macOS 为普通方向键事件附加的合成 Fn 标志；如需录制或使用 Fn+方向键映射 Home、End、Page Up 或 Page Down，请关闭。",
     "Capture system keyboard shortcuts": "捕获系统快捷键",
     "Shortcut Reference": "串流快捷键",
     "Stream Shortcuts": "串流快捷键",

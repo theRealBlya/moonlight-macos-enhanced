@@ -202,13 +202,11 @@ static NSEventModifierFlags HIDModifierFlagForKeyCode(unsigned short keyCode) {
     }
 }
 
-static HIDKeyboardPhysicalModifierMask HIDEffectivePhysicalModifierMaskForEvent(HIDKeyboardPhysicalModifierMask physicalMask,
-                                                                                NSEvent *event) {
-    if (event == nil) {
+static HIDKeyboardPhysicalModifierMask HIDEffectivePhysicalModifierMaskForFlags(HIDKeyboardPhysicalModifierMask physicalMask,
+                                                                                NSEventModifierFlags modifierFlags) {
+    if (modifierFlags == 0) {
         return physicalMask;
     }
-
-    NSEventModifierFlags modifierFlags = event.modifierFlags;
 
     if ((modifierFlags & NSEventModifierFlagShift) != 0 &&
         (physicalMask & (HIDKeyboardPhysicalModifierMaskLeftShift | HIDKeyboardPhysicalModifierMaskRightShift)) == 0) {
@@ -228,6 +226,23 @@ static HIDKeyboardPhysicalModifierMask HIDEffectivePhysicalModifierMaskForEvent(
     }
 
     return physicalMask;
+}
+
+static NSString *HIDWindowsScanCodeDescription(short windowsKeyCode) {
+    switch (windowsKeyCode & 0xFF) {
+        case 0x14: // VK_CAPITAL
+            return @"3A";
+        case 0x26: // VK_UP
+            return @"E0 48";
+        case 0x28: // VK_DOWN
+            return @"E0 50";
+        case 0x25: // VK_LEFT
+            return @"E0 4B";
+        case 0x27: // VK_RIGHT
+            return @"E0 4D";
+        default:
+            return @"host-normalized";
+    }
 }
 
 static unsigned short HIDRemoteModifierKeyCode(HIDKeyboardRemoteModifierMask mask) {
@@ -814,6 +829,15 @@ static void HIDDispatchSyntheticRemoteModifierTap(HIDSupport *support,
            mode == KeyboardCompatibilityModeHybrid;
 }
 
+- (NSEventModifierFlags)normalizedModifierFlagsForEvent:(NSEvent *)event {
+    if (event == nil) {
+        return 0;
+    }
+    return [StreamShortcutProfile normalizedModifierFlags:event.modifierFlags
+                                                forKeyCode:event.keyCode
+                                       ignoreArrowFunction:[StreamShortcutProfile ignoresMacOSFunctionModifierForArrowKeys]];
+}
+
 - (void)updateKeyboardPhysicalModifierStateFromEvent:(NSEvent *)event {
     HIDKeyboardPhysicalModifierMask mask = HIDPhysicalModifierMaskForKeyCode(event.keyCode);
     NSEventModifierFlags modifierFlag = HIDModifierFlagForKeyCode(event.keyCode);
@@ -835,7 +859,7 @@ static void HIDDispatchSyntheticRemoteModifierTap(HIDSupport *support,
         return NO;
     }
 
-    if ((event.modifierFlags & NSEventModifierFlagCommand) == 0) {
+    if (([self normalizedModifierFlagsForEvent:event] & NSEventModifierFlagCommand) == 0) {
         return NO;
     }
 
@@ -852,7 +876,9 @@ static void HIDDispatchSyntheticRemoteModifierTap(HIDSupport *support,
 
 - (NSUInteger)desiredRemoteKeyboardModifierMaskForEvent:(NSEvent *)event {
     NSUInteger desired = 0;
-    NSUInteger physical = HIDEffectivePhysicalModifierMaskForEvent(self.keyboardPhysicalModifierSourceMask, event);
+    NSEventModifierFlags normalizedModifiers = [self normalizedModifierFlagsForEvent:event];
+    NSUInteger physical = HIDEffectivePhysicalModifierMaskForFlags(self.keyboardPhysicalModifierSourceMask,
+                                                                    normalizedModifiers);
     BOOL swapLeftControlAndWin = [self usesKeyboardLeftControlWinSwapCompatibility];
     BOOL hardMapCommandToControl = [self usesKeyboardCommandToControlCompatibility];
     BOOL translateShortcutCommandToControl = [self shouldApplyKeyboardShortcutTranslationForEvent:event];
@@ -955,38 +981,60 @@ static void HIDDispatchSyntheticRemoteModifierTap(HIDSupport *support,
         return;
     }
 
+    // AppKit reports Caps Lock as a flagsChanged event rather than the
+    // keyDown/keyUp pair used by ordinary keys. Windows treats Caps Lock as a
+    // toggle key (VK_CAPITAL), not as a held modifier, so forward one complete
+    // tap for each local state transition. Calling the shared send function for
+    // both actions keeps translation, modifier normalization, diagnostics, and
+    // input queue ordering identical to the regular keyboard path.
+    if (event.keyCode == kVK_CapsLock) {
+        [self sendKeyboardEvent:event action:KEY_ACTION_DOWN source:"capsLockDown"];
+        [self sendKeyboardEvent:event action:KEY_ACTION_UP source:"capsLockUp"];
+        return;
+    }
+
     [self updateKeyboardPhysicalModifierStateFromEvent:event];
     [self syncKeyboardModifierStateForEvent:event];
 }
 
 - (void)keyDown:(NSEvent *)event {
     if (self.shouldSendInputEvents) {
-        [self syncKeyboardModifierStateForEvent:event];
-        short keyCode = 0x8000 | [self translateKeyCodeWithEvent:event];
-        char modifiers = [self translateKeyModifierWithEvent:event];
-        PML_INPUT_STREAM_CONTEXT inputCtx = HIDInputContext(self);
-        if (!HIDValidateInputContext(inputCtx, "keyDown")) {
-            return;
-        }
-        HIDDispatchInput(self, inputCtx, ^{
-            LiSendKeyboardEventCtx(inputCtx, keyCode, KEY_ACTION_DOWN, modifiers);
-        });
+        [self sendKeyboardEvent:event action:KEY_ACTION_DOWN source:"keyDown"];
     }
 }
 
 - (void)keyUp:(NSEvent *)event {
     if (self.shouldSendInputEvents) {
-        [self syncKeyboardModifierStateForEvent:event];
-        short keyCode = 0x8000 | [self translateKeyCodeWithEvent:event];
-        char modifiers = [self translateKeyModifierWithEvent:event];
-        PML_INPUT_STREAM_CONTEXT inputCtx = HIDInputContext(self);
-        if (!HIDValidateInputContext(inputCtx, "keyUp")) {
-            return;
-        }
-        HIDDispatchInput(self, inputCtx, ^{
-            LiSendKeyboardEventCtx(inputCtx, keyCode, KEY_ACTION_UP, modifiers);
-        });
+        [self sendKeyboardEvent:event action:KEY_ACTION_UP source:"keyUp"];
     }
+}
+
+- (void)sendKeyboardEvent:(NSEvent *)event action:(char)action source:(const char *)source {
+    [self syncKeyboardModifierStateForEvent:event];
+
+    short windowsKeyCode = [self translateKeyCodeWithEvent:event];
+    short wireKeyCode = (short)(0x8000 | windowsKeyCode);
+    char modifiers = [self translateKeyModifierWithEvent:event];
+    NSEventModifierFlags normalizedModifiers = [self normalizedModifierFlagsForEvent:event];
+    NSString *scanCode = HIDWindowsScanCodeDescription(windowsKeyCode);
+
+    Log(LOG_D, @"[inputdiag] keyboard action=%@ macKeyCode=%hu rawModifierFlags=0x%llx normalizedModifiers=0x%llx windowsVK=0x%02x wireKey=0x%04x scanCode=%@ remoteModifiers=0x%02x",
+        action == KEY_ACTION_DOWN ? @"down" : @"up",
+        event.keyCode,
+        (unsigned long long)event.modifierFlags,
+        (unsigned long long)normalizedModifiers,
+        windowsKeyCode & 0xFF,
+        (unsigned short)wireKeyCode,
+        scanCode,
+        (unsigned char)modifiers);
+
+    PML_INPUT_STREAM_CONTEXT inputCtx = HIDInputContext(self);
+    if (!HIDValidateInputContext(inputCtx, source)) {
+        return;
+    }
+    HIDDispatchInput(self, inputCtx, ^{
+        LiSendKeyboardEventCtx(inputCtx, wireKeyCode, action, modifiers);
+    });
 }
 
 - (void)releaseAllModifierKeys {
