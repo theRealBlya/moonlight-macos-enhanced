@@ -16,6 +16,9 @@
 #import "LatencyProbe.h"
 #import "Moonlight-Swift.h"
 
+#undef NSLocalizedString
+#define NSLocalizedString(key, comment) [[LanguageManager shared] localize:key]
+
 @interface ConnectionEditorViewController () <NSTableViewDataSource, NSTableViewDelegate>
 @property (nonatomic, strong) TemporaryHost *host;
 @property (nonatomic, strong) NSTextField *statusLabel;
@@ -53,7 +56,7 @@
     rootStack.translatesAutoresizingMaskIntoConstraints = NO;
     [view addSubview:rootStack];
 
-    NSTextField *title = [NSTextField labelWithString:[NSString stringWithFormat:@"连接方式 - %@", self.host.displayName ?: @"-"]];
+    NSTextField *title = [NSTextField labelWithString:[NSString stringWithFormat:NSLocalizedString(@"Connection Method - %@", @""), self.host.displayName ?: @"-"]];
     title.font = [NSFont systemFontOfSize:16 weight:NSFontWeightSemibold];
     [rootStack addArrangedSubview:title];
 
@@ -82,7 +85,7 @@
     defaultRow.spacing = 8;
     [methodStack addArrangedSubview:defaultRow];
 
-    NSTextField *defaultLabel = [NSTextField labelWithString:@"默认连接方式"];
+    NSTextField *defaultLabel = [NSTextField labelWithString:NSLocalizedString(@"Default Connection Method", @"")];
     [defaultRow addArrangedSubview:defaultLabel];
 
     self.defaultPopup = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
@@ -96,7 +99,7 @@
     currentRow.spacing = 8;
     [methodStack addArrangedSubview:currentRow];
 
-    NSTextField *currentLabel = [NSTextField labelWithString:@"本次连接方式"];
+    NSTextField *currentLabel = [NSTextField labelWithString:NSLocalizedString(@"Connection Method for This Session", @"")];
     [currentRow addArrangedSubview:currentLabel];
 
     self.currentPopup = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
@@ -119,17 +122,17 @@
     self.tableView.doubleAction = @selector(handleDoubleClick:);
 
     NSTableColumn *addressCol = [[NSTableColumn alloc] initWithIdentifier:@"address"];
-    addressCol.title = @"地址";
+    addressCol.title = NSLocalizedString(@"Address", @"");
     addressCol.width = 320;
     [self.tableView addTableColumn:addressCol];
 
     NSTableColumn *sourceCol = [[NSTableColumn alloc] initWithIdentifier:@"source"];
-    sourceCol.title = @"来源";
+    sourceCol.title = NSLocalizedString(@"Source", @"");
     sourceCol.width = 80;
     [self.tableView addTableColumn:sourceCol];
 
     NSTableColumn *statusCol = [[NSTableColumn alloc] initWithIdentifier:@"status"];
-    statusCol.title = @"状态";
+    statusCol.title = NSLocalizedString(@"Status", @"");
     statusCol.width = 140;
     [self.tableView addTableColumn:statusCol];
 
@@ -143,13 +146,13 @@
     [rootStack addArrangedSubview:addStack];
 
     self.addField = [[NSTextField alloc] initWithFrame:NSZeroRect];
-    self.addField.placeholderString = @"添加地址（IP/域名/IPv6，可含端口）";
+    self.addField.placeholderString = NSLocalizedString(@"Add address (IP / hostname / IPv6, port optional)", @"");
     [addStack addArrangedSubview:self.addField];
 
-    NSButton *addButton = [NSButton buttonWithTitle:@"新增" target:self action:@selector(addEndpoint)];
+    NSButton *addButton = [NSButton buttonWithTitle:NSLocalizedString(@"Add", @"") target:self action:@selector(addEndpoint)];
     [addStack addArrangedSubview:addButton];
 
-    self.removeButton = [NSButton buttonWithTitle:@"删除" target:self action:@selector(removeSelectedEndpoint)];
+    self.removeButton = [NSButton buttonWithTitle:NSLocalizedString(@"Delete", @"") target:self action:@selector(removeSelectedEndpoint)];
     self.removeButton.enabled = NO;
     [addStack addArrangedSubview:self.removeButton];
 
@@ -166,10 +169,10 @@
     [actionsSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [actionsSpacer setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
 
-    self.testAllButton = [NSButton buttonWithTitle:@"测速全部" target:self action:@selector(testAllEndpoints)];
+    self.testAllButton = [NSButton buttonWithTitle:NSLocalizedString(@"Test All", @"") target:self action:@selector(testAllEndpoints)];
     [actions addArrangedSubview:self.testAllButton];
 
-    NSButton *closeButton = [NSButton buttonWithTitle:@"关闭" target:self action:@selector(closeSheet)];
+    NSButton *closeButton = [NSButton buttonWithTitle:NSLocalizedString(@"Close", @"") target:self action:@selector(closeSheet)];
     [actions addArrangedSubview:closeButton];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -206,13 +209,13 @@
     [self.defaultPopup removeAllItems];
     [self.currentPopup removeAllItems];
 
-    [self.defaultPopup addItemWithTitle:@"不设默认（自动）"];
+    [self.defaultPopup addItemWithTitle:NSLocalizedString(@"No Default (Automatic)", @"")];
     self.defaultPopup.lastItem.representedObject = @"__none__";
 
-    [self.defaultPopup addItemWithTitle:@"自动"];
+    [self.defaultPopup addItemWithTitle:NSLocalizedString(@"Auto", @"")];
     self.defaultPopup.lastItem.representedObject = @"Auto";
 
-    [self.currentPopup addItemWithTitle:@"自动"];
+    [self.currentPopup addItemWithTitle:NSLocalizedString(@"Auto", @"")];
     self.currentPopup.lastItem.representedObject = @"Auto";
 
     for (NSString *addr in self.endpoints) {
@@ -257,22 +260,22 @@
 
 - (NSString *)sourceLabelForAddress:(NSString *)addr manualSet:(NSSet *)manualSet {
     if ([manualSet containsObject:addr]) {
-        return @"手动";
+        return NSLocalizedString(@"Manual", @"");
     }
     if (self.host.activeAddress && [addr isEqualToString:self.host.activeAddress]) {
-        return @"当前";
+        return NSLocalizedString(@"Current", @"");
     }
     if (self.host.localAddress && [addr isEqualToString:self.host.localAddress]) {
-        return @"局域网";
+        return NSLocalizedString(@"LAN", @"");
     }
     if (self.host.externalAddress && [addr isEqualToString:self.host.externalAddress]) {
-        return @"外网";
+        return NSLocalizedString(@"WAN", @"");
     }
     if (self.host.ipv6Address && [addr isEqualToString:self.host.ipv6Address]) {
         return @"IPv6";
     }
     if (self.host.address && [addr isEqualToString:self.host.address]) {
-        return @"手动地址";
+        return NSLocalizedString(@"Manual Address", @"");
     }
     return @"";
 }
@@ -334,14 +337,14 @@
 
     if (effectiveState == 1) {
         if (latency && latency.intValue >= 0) {
-            return [NSString stringWithFormat:@"在线 (%dms)", latency.intValue];
+            return [NSString stringWithFormat:NSLocalizedString(@"Online (%dms)", @""), latency.intValue];
         }
-        return @"在线";
+        return NSLocalizedString(@"Online", @"");
     }
     if (effectiveState == 0) {
-        return @"离线";
+        return NSLocalizedString(@"Offline", @"");
     }
-    return @"未知";
+    return NSLocalizedString(@"Unknown", @"");
 }
 
 - (void)updateSummaryLabels {
@@ -355,9 +358,9 @@
         }
     }
 
-    self.statusLabel.stringValue = [NSString stringWithFormat:@"主机状态：%@", anyOnline ? @"在线" : @"离线"];
+    self.statusLabel.stringValue = [NSString stringWithFormat:NSLocalizedString(@"Host status: %@", @""), anyOnline ? NSLocalizedString(@"Online", @"") : NSLocalizedString(@"Offline", @"")];
     NSString *autoAddr = self.host.activeAddress ?: @"-";
-    self.autoLabel.stringValue = [NSString stringWithFormat:@"自动选择：%@", autoAddr];
+    self.autoLabel.stringValue = [NSString stringWithFormat:NSLocalizedString(@"Auto-selected: %@", @""), autoAddr];
 }
 
 - (void)addEndpoint {
@@ -405,14 +408,14 @@
 
     NSString *oldAddr = self.endpoints[row];
     NSAlert *alert = [[NSAlert alloc] init];
-    alert.messageText = @"编辑连接方式";
-    alert.informativeText = @"修改地址后会替换当前连接方式";
+    alert.messageText = NSLocalizedString(@"Edit Connection Method", @"");
+    alert.informativeText = NSLocalizedString(@"Changing the address will replace the current connection method", @"");
 
     NSTextField *inputField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 320, 24)];
     inputField.stringValue = oldAddr;
     alert.accessoryView = inputField;
-    [alert addButtonWithTitle:@"保存"];
-    [alert addButtonWithTitle:@"取消"];
+    [alert addButtonWithTitle:NSLocalizedString(@"Save", @"")];
+    [alert addButtonWithTitle:NSLocalizedString(@"Cancel", @"")];
 
     [alert beginSheetModalForWindow:self.view.window completionHandler:^(NSModalResponse returnCode) {
         if (returnCode != NSAlertFirstButtonReturn) {
