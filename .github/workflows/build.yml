@@ -281,6 +281,31 @@ jobs:
           exit 1
         fi
 
+    - name: Re-sign and verify universal app bundle
+      run: |
+        app="dist/universal/Moonlight.app"
+
+        # lipo-merging the per-arch binaries happens after each was signed, which
+        # invalidates the signature ("invalid Info.plist ... In architecture: x86_64").
+        # Re-sign the merged bundle, carrying over the entitlements the per-arch
+        # builds were signed with so the universal build stays sandboxed too.
+        codesign -d --entitlements - --xml "work/arm64/Moonlight.app" > universal.entitlements
+        codesign --force --deep --sign - --entitlements universal.entitlements "$app"
+
+        codesign -dv --verbose=2 "$app" 2>&1
+
+        if [ ! -d "$app/Contents/_CodeSignature" ]; then
+          echo "Missing Contents/_CodeSignature; universal bundle is unsigned"
+          exit 1
+        fi
+
+        codesign --verify --strict "$app"
+
+        if codesign -d --verbose=2 "$app" 2>&1 | grep -q "runtime"; then
+          echo "Hardened runtime is enabled; bundled frameworks will fail to load"
+          exit 1
+        fi
+
     - name: Create universal DMG
       run: |
         brew install create-dmg || true
