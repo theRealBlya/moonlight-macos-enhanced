@@ -1535,7 +1535,12 @@ static CGDirectDisplayID getDisplayID(NSScreen* screen)
 {
     [self teardownNativePresentationResources];
 
-    _nativeDisplayColorSpace = MLCreateTransferColorSpace(_enableHdr ? _hdrTransferMode : MLHDRTransferModeSDR);
+    // SDR host content is captured desktop/game output, which is sRGB-encoded rather
+    // than BT.1886 video. Tagging it ITU-R 709 makes ColorSync apply a ~2.4 -> ~2.2
+    // transfer conversion that darkens midtones (a 128 source renders as 121).
+    _nativeDisplayColorSpace = _enableHdr
+        ? MLCreateTransferColorSpace(_hdrTransferMode)
+        : CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     if (_nativeDisplayColorSpace == NULL && _enableHdr) {
         _nativeDisplayColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020);
     }
