@@ -67,6 +67,7 @@ jobs:
           CODE_SIGN_IDENTITY="-" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=YES \
+          ENABLE_HARDENED_RUNTIME=NO \
           BUILD_NUMBER=${{ github.run_number }} \
           build
 
@@ -98,6 +99,26 @@ jobs:
 
         if [[ "$helper_archs" != *"${{ matrix.archs }}"* ]]; then
           echo "Helper binary missing expected architecture ${{ matrix.archs }}"
+          exit 1
+        fi
+
+    - name: Verify ${{ matrix.variant }} code signature
+      run: |
+        app="build/Build/Products/Release/Moonlight.app"
+
+        codesign -dv --verbose=2 "$app" 2>&1
+
+        if [ ! -d "$app/Contents/_CodeSignature" ]; then
+          echo "Missing Contents/_CodeSignature; bundle is unsigned"
+          exit 1
+        fi
+
+        codesign --verify --strict "$app"
+
+        # Ad-hoc signed code cannot satisfy library validation, so the hardened
+        # runtime would stop dyld from loading the bundled SDL2/OpenSSL frameworks.
+        if codesign -d --verbose=2 "$app" 2>&1 | grep -q "runtime"; then
+          echo "Hardened runtime is enabled; bundled frameworks will fail to load"
           exit 1
         fi
 
